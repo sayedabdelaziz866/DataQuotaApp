@@ -8,6 +8,8 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.Gravity
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -55,12 +57,17 @@ class MainActivity : AppCompatActivity() {
         requestNeededPermissions()
 
         binding.btnRegisterNetwork.setOnClickListener { registerCurrentNetwork() }
+        binding.btnOpenLocationSettings.setOnClickListener { openAppLocationSettings() }
+        binding.btnAddManualBssid.setOnClickListener { addManualBssid() }
         binding.btnSaveLimit.setOnClickListener { saveLimit() }
         binding.btnToggleMonitoring.setOnClickListener { toggleMonitoring() }
         binding.btnResetUsage.setOnClickListener {
             quotaManager.resetUsage()
             Toast.makeText(this, "تم تصفير الاستهلاك", Toast.LENGTH_SHORT).show()
             refreshUi()
+        }
+        binding.btnOpenUsageAccessSettings.setOnClickListener {
+            TopAppsHelper.openUsageAccessSettings(this)
         }
 
         refreshUi()
@@ -103,20 +110,51 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun registerCurrentNetwork() {
-        val bssid = WifiHelper.getCurrentBssid(this)
-        val ssid = WifiHelper.getCurrentSsid(this)
+    private fun openAppLocationSettings() {
+        val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = android.net.Uri.fromParts("package", packageName, null)
+        }
+        startActivity(intent)
+        Toast.makeText(
+            this,
+            "روح على Permissions > Location واختار \"Allow all the time\"",
+            Toast.LENGTH_LONG
+        ).show()
+    }
 
-        if (bssid == null) {
+    private val bssidPattern = Regex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$")
+
+    private fun addManualBssid() {
+        val text = binding.inputManualBssid.text.toString().trim()
+        if (!bssidPattern.matches(text)) {
             Toast.makeText(
                 this,
-                "مش قادر أقرا بيانات الشبكة. اتأكد إنك متصل بالواي فاي وإن إذن الموقع متفعّل",
+                "الصيغة لازم تكون زي كده: bc:96:80:ad:6b:42",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+        quotaManager.addManualBssid(text)
+        binding.inputManualBssid.text?.clear()
+        Toast.makeText(this, "تمت الإضافة", Toast.LENGTH_SHORT).show()
+        refreshUi()
+    }
+
+    private fun registerCurrentNetwork() {
+        val bssid = WifiHelper.getCurrentBssid(this)
+        val gatewayIp = WifiHelper.getCurrentGatewayIp(this)
+        val ssid = WifiHelper.getCurrentSsid(this)
+
+        if (bssid == null && gatewayIp == null) {
+            Toast.makeText(
+                this,
+                "مش قادر أقرا بيانات الشبكة. اتأكد إنك متصل بالواي فاي",
                 Toast.LENGTH_LONG
             ).show()
             return
         }
 
-        quotaManager.setHomeNetwork(bssid, ssid ?: "شبكة غير معروفة الاسم")
+        quotaManager.setHomeNetwork(bssid, ssid ?: "شبكة غير معروفة الاسم", gatewayIp)
         Toast.makeText(this, "تم تسجيل \"$ssid\" كشبكة البيت", Toast.LENGTH_SHORT).show()
         refreshUi()
     }
@@ -138,7 +176,7 @@ class MainActivity : AppCompatActivity() {
         if (quotaManager.isMonitoringEnabled()) {
             stopMonitoring()
         } else {
-            if (quotaManager.getHomeBssid() == null) {
+            if (quotaManager.getHomeBssids().isEmpty() && quotaManager.getHomeGatewayIp() == null) {
                 Toast.makeText(this, "سجل شبكة البيت الأول", Toast.LENGTH_SHORT).show()
                 return
             }
@@ -175,8 +213,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshUi() {
         val homeSsid = quotaManager.getHomeSsid()
-        binding.txtHomeNetwork.text =
-            if (homeSsid != null) "شبكة البيت: $homeSsid" else "لسه متسجلتش شبكة بيت"
+        val bssidCount = quotaManager.getHomeBssids().size
+        binding.txtHomeNetwork.text = if (homeSsid != null) {
+            "شبكة البيت: $homeSsid (مسجل $bssidCount BSSID)"
+        } else {
+            "لسه متسجلتش شبكة بيت"
+        }
 
         val limitBytes = quotaManager.getLimitBytes()
         val usedBytes = quotaManager.getUsedBytes()
@@ -200,5 +242,59 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnToggleMonitoring.text =
             if (quotaManager.isMonitoringEnabled()) "إيقاف المراقبة" else "بدء المراقبة"
+
+        updateDailyChart()
+        updateTopApps()
+    }
+
+    private fun updateDailyChart() {
+        val daily = quotaManager.getDailyUsage(7)
+        val points = daily.map { (label, bytes) ->
+            Pair(label, (bytes / 1024.0 / 1024.0 / 1024.0).toFloat()) // GB
+        }
+        binding.dailyChart.setData(points)
+    }
+
+    private fun updateTopApps() {
+        val container = binding.topAppsContainer
+        container.removeAllViews()
+
+        if (!TopAppsHelper.hasUsageAccess(this)) {
+            addTopAppsMessage("محتاج تفعّل صلاحية Usage Access الأول (الزرار اللي فوق)")
+            return
+        }
+
+        // Usage since the start of today.
+        val cal = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+        }
+        val topApps = TopAppsHelper.getTopApps(this, cal.timeInMillis, limit = 5)
+
+        if (topApps.isEmpty()) {
+            addTopAppsMessage("لسه مفيش بيانات استهلاك كافية النهاردة")
+            return
+        }
+
+        topApps.forEach { app ->
+            val mb = app.bytes / 1024.0 / 1024.0
+            val text = TextView(this).apply {
+                text = String.format("%s — %.1f MB", app.appName, mb)
+                textSize = 15f
+                setPadding(0, 8, 0, 8)
+                gravity = Gravity.START
+            }
+            container.addView(text)
+        }
+    }
+
+    private fun addTopAppsMessage(message: String) {
+        val text = TextView(this).apply {
+            text = message
+            textSize = 14f
+            setPadding(0, 8, 0, 8)
+        }
+        binding.topAppsContainer.addView(text)
     }
 }

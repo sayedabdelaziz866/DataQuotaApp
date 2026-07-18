@@ -37,6 +37,34 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="سجّل الشبكة الحالية كشبكة البيت"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="13sp"
+            android:layout_marginBottom="4dp"
+            android:text="مهم: عشان المراقبة تشتغل وإنت مش فاتح التطبيق، لازم صلاحية الموقع تكون على &quot;اسمح طول الوقت&quot; مش بس أثناء الاستخدام" />
+
+        <Button
+            android:id="@+id/btnOpenLocationSettings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="افتح إعدادات صلاحية الموقع"
+            android:layout_marginBottom="16dp" />
+
+        <EditText
+            android:id="@+id/inputManualBssid"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="أضف BSSID يدوي (مثلاً bc:96:80:ad:6b:42)"
+            android:inputType="textNoSuggestions" />
+
+        <Button
+            android:id="@+id/btnAddManualBssid"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="إضافة الـ BSSID ده لشبكة البيت"
             android:layout_marginBottom="24dp" />
 
         <TextView
@@ -71,7 +99,43 @@
             android:id="@+id/btnResetUsage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="تصفير الاستهلاك" />
+            android:text="تصفير الاستهلاك"
+            android:layout_marginBottom="32dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="الاستهلاك اليومي (آخر 7 أيام)"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <com.dataquota.app.BarChartView
+            android:id="@+id/dailyChart"
+            android:layout_width="match_parent"
+            android:layout_height="220dp"
+            android:layout_marginBottom="32dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="الأكثر استهلاكًا للنت"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnOpenUsageAccessSettings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="افتح صلاحية Usage Access"
+            android:layout_marginBottom="12dp" />
+
+        <LinearLayout
+            android:id="@+id/topAppsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
 
     </LinearLayout>
 </ScrollView>

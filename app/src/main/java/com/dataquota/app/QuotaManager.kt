@@ -15,8 +15,9 @@ class QuotaManager(context: Context) {
         context.getSharedPreferences("quota_prefs", Context.MODE_PRIVATE)
 
     companion object {
-        private const val KEY_HOME_BSSID = "home_bssid"
+        private const val KEY_HOME_BSSIDS = "home_bssids"       // now a Set<String>
         private const val KEY_HOME_SSID = "home_ssid"           // just for display
+        private const val KEY_HOME_GATEWAY = "home_gateway_ip"  // fallback that needs no Location permission
         private const val KEY_LIMIT_BYTES = "limit_bytes"
         private const val KEY_USED_BYTES = "used_bytes"
         private const val KEY_LAST_WIFI_RX = "last_wifi_rx"
@@ -28,14 +29,30 @@ class QuotaManager(context: Context) {
 
     // ---------- Home network ----------
 
-    fun setHomeNetwork(bssid: String, ssid: String) {
-        prefs.edit().putString(KEY_HOME_BSSID, bssid)
-            .putString(KEY_HOME_SSID, ssid)
-            .apply()
+    /** Registers the currently-connected network (auto-detected BSSID + gateway). */
+    fun setHomeNetwork(bssid: String?, ssid: String, gatewayIp: String?) {
+        val editor = prefs.edit().putString(KEY_HOME_SSID, ssid)
+        if (bssid != null) {
+            val current = getHomeBssids().toMutableSet()
+            current.add(bssid.uppercase())
+            editor.putStringSet(KEY_HOME_BSSIDS, current)
+        }
+        if (gatewayIp != null) editor.putString(KEY_HOME_GATEWAY, gatewayIp)
+        editor.apply()
     }
 
-    fun getHomeBssid(): String? = prefs.getString(KEY_HOME_BSSID, null)
+    /** Adds one BSSID typed in manually (e.g. copied from a Wi-Fi analyzer app),
+     *  without needing to be connected to that network right now. Useful for
+     *  registering a router's second band (2.4GHz/5GHz) ahead of time. */
+    fun addManualBssid(bssid: String) {
+        val current = getHomeBssids().toMutableSet()
+        current.add(bssid.trim().uppercase())
+        prefs.edit().putStringSet(KEY_HOME_BSSIDS, current).apply()
+    }
+
+    fun getHomeBssids(): Set<String> = prefs.getStringSet(KEY_HOME_BSSIDS, emptySet()) ?: emptySet()
     fun getHomeSsid(): String? = prefs.getString(KEY_HOME_SSID, null)
+    fun getHomeGatewayIp(): String? = prefs.getString(KEY_HOME_GATEWAY, null)
 
     // ---------- Limit ----------
 
@@ -57,6 +74,36 @@ class QuotaManager(context: Context) {
         resetIfNewMonth()
         val newTotal = getUsedBytes() + delta
         prefs.edit().putLong(KEY_USED_BYTES, newTotal).apply()
+        addDailyBytes(delta)
+    }
+
+    // ---------- Daily breakdown (for the chart) ----------
+
+    private fun dailyKey(dateStr: String) = "daily_$dateStr"
+
+    private fun addDailyBytes(delta: Long) {
+        val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            .format(java.util.Date())
+        val key = dailyKey(today)
+        val current = prefs.getLong(key, 0L)
+        prefs.edit().putLong(key, current + delta).apply()
+    }
+
+    /** Returns (date label, bytes) for each of the last [days] days, oldest first. */
+    fun getDailyUsage(days: Int): List<Pair<String, Long>> {
+        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        val labelFmt = java.text.SimpleDateFormat("d/M", java.util.Locale.US)
+        val cal = java.util.Calendar.getInstance()
+        val result = mutableListOf<Pair<String, Long>>()
+        cal.add(java.util.Calendar.DAY_OF_YEAR, -(days - 1))
+        repeat(days) {
+            val dateStr = fmt.format(cal.time)
+            val label = labelFmt.format(cal.time)
+            val bytes = prefs.getLong(dailyKey(dateStr), 0L)
+            result.add(Pair(label, bytes))
+            cal.add(java.util.Calendar.DAY_OF_YEAR, 1)
+        }
+        return result
     }
 
     fun isOverLimit(): Boolean {
