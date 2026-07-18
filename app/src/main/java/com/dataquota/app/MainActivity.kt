@@ -58,6 +58,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnRegisterNetwork.setOnClickListener { registerCurrentNetwork() }
         binding.btnOpenLocationSettings.setOnClickListener { openAppLocationSettings() }
+        binding.btnDisableBatteryOptimization.setOnClickListener { requestIgnoreBatteryOptimization() }
         binding.btnAddManualBssid.setOnClickListener { addManualBssid() }
         binding.btnSaveLimit.setOnClickListener { saveLimit() }
         binding.btnToggleMonitoring.setOnClickListener { toggleMonitoring() }
@@ -108,6 +109,19 @@ class MainActivity : AppCompatActivity() {
         if (needed.isNotEmpty()) {
             permissionLauncher.launch(needed.toTypedArray())
         }
+    }
+
+    @Suppress("BatteryLife")
+    private fun requestIgnoreBatteryOptimization() {
+        val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+        if (pm.isIgnoringBatteryOptimizations(packageName)) {
+            Toast.makeText(this, "التطبيق مستثنى بالفعل من توفير البطارية", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+            data = android.net.Uri.parse("package:$packageName")
+        }
+        startActivity(intent)
     }
 
     private fun openAppLocationSettings() {

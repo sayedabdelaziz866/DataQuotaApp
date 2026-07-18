@@ -85,16 +85,17 @@ object WifiHelper {
         val homeGateway = quotaManager.getHomeGatewayIp()
         if (homeBssids.isEmpty() && homeGateway == null) return false
 
+        // Check BOTH identifiers - either one matching is enough. We must
+        // NOT stop just because BSSID was readable but didn't match, since
+        // that would skip the Location-free gateway fallback entirely.
         val currentBssid = getCurrentBssid(context)
-        if (currentBssid != null && homeBssids.isNotEmpty()) {
-            return homeBssids.contains(currentBssid.uppercase())
+        if (currentBssid != null && homeBssids.contains(currentBssid.uppercase())) {
+            return true
         }
 
-        // BSSID unavailable right now - fall back to gateway IP, which
-        // doesn't depend on Location permission/services.
         val currentGateway = getCurrentGatewayIp(context)
-        if (currentGateway != null && homeGateway != null) {
-            return homeGateway == currentGateway
+        if (currentGateway != null && homeGateway != null && currentGateway == homeGateway) {
+            return true
         }
 
         return false
