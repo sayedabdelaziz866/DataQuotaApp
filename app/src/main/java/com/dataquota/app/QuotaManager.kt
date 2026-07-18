@@ -25,6 +25,8 @@ class QuotaManager(context: Context) {
         private const val KEY_CYCLE_MONTH = "cycle_month"       // which month the counter belongs to
         private const val KEY_MONITORING_ENABLED = "monitoring_enabled"
         private const val KEY_BLOCKED = "is_blocked"
+        private const val KEY_WARNED_80 = "warned_80_percent"
+        private const val KEY_LAST_CHECK = "last_check_time"
     }
 
     // ---------- Home network ----------
@@ -57,7 +59,9 @@ class QuotaManager(context: Context) {
     // ---------- Limit ----------
 
     fun setLimitBytes(bytes: Long) {
-        prefs.edit().putLong(KEY_LIMIT_BYTES, bytes).apply()
+        prefs.edit().putLong(KEY_LIMIT_BYTES, bytes)
+            .putBoolean(KEY_WARNED_80, false)
+            .apply()
     }
 
     fun getLimitBytes(): Long = prefs.getLong(KEY_LIMIT_BYTES, 0L)
@@ -117,6 +121,7 @@ class QuotaManager(context: Context) {
         prefs.edit()
             .putLong(KEY_USED_BYTES, 0L)
             .putInt(KEY_CYCLE_MONTH, currentMonthKey())
+            .putBoolean(KEY_WARNED_80, false)
             .apply()
     }
 
@@ -127,9 +132,26 @@ class QuotaManager(context: Context) {
             prefs.edit()
                 .putLong(KEY_USED_BYTES, 0L)
                 .putInt(KEY_CYCLE_MONTH, current)
+                .putBoolean(KEY_WARNED_80, false)
                 .apply()
         }
     }
+
+    fun hasWarned80(): Boolean = prefs.getBoolean(KEY_WARNED_80, false)
+    fun setWarned80(warned: Boolean) {
+        prefs.edit().putBoolean(KEY_WARNED_80, warned).apply()
+    }
+
+    // ---------- Diagnostics ----------
+
+    /** Timestamp of the last time the background monitor loop actually ran.
+     *  If this stops updating, the service got frozen/killed by the OS -
+     *  useful for telling "logic bug" apart from "OEM killed the process". */
+    fun setLastCheckTime(millis: Long) {
+        prefs.edit().putLong(KEY_LAST_CHECK, millis).apply()
+    }
+
+    fun getLastCheckTime(): Long = prefs.getLong(KEY_LAST_CHECK, 0L)
 
     private fun currentMonthKey(): Int {
         val cal = Calendar.getInstance()

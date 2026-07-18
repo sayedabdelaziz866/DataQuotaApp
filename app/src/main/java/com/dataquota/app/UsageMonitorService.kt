@@ -42,6 +42,8 @@ class UsageMonitorService : Service() {
         private const val CHECK_INTERVAL_MS = 15_000L // check every 15 seconds
         private const val NOTIF_CHANNEL_ID = "usage_monitor_channel"
         private const val NOTIF_ID = 7
+        private const val WARNING_CHANNEL_ID = "quota_warning_channel"
+        private const val WARNING_NOTIF_ID = 8
     }
 
     override fun onCreate() {
@@ -57,6 +59,7 @@ class UsageMonitorService : Service() {
     }
 
     private fun checkUsageOnce() {
+        quotaManager.setLastCheckTime(System.currentTimeMillis())
         val onHome = WifiHelper.isOnHomeNetwork(this, quotaManager)
 
         if (onHome) {
@@ -79,8 +82,41 @@ class UsageMonitorService : Service() {
             if (quotaManager.isBlocked()) {
                 stopBlockingVpn()
             }
+            checkApproachingLimit()
         }
     }
+
+    /** Sends a one-time heads-up notification once usage crosses 80% of the limit. */
+    private fun checkApproachingLimit() {
+        val limit = quotaManager.getLimitBytes()
+        if (limit <= 0) return
+        val used = quotaManager.getUsedBytes()
+        if (used >= limit * 0.8 && !quotaManager.hasWarned80()) {
+            quotaManager.setWarned80(true)
+            sendWarningNotification(used, limit)
+        }
+    }
+
+    private fun sendWarningNotification(used: Long, limit: Long) {
+        val nm = getSystemService(NotificationManager::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                WARNING_CHANNEL_ID,
+                "Data Quota Warning",
+                NotificationManager.IMPORTANCE_HIGH
+            )
+            nm.createNotificationChannel(channel)
+        }
+        val usedGb = used / 1024.0 / 1024.0 / 1024.0
+        val limitGb = limit / 1024.0 / 1024.0 / 1024.0
+        val notification = NotificationCompat.Builder(this, WARNING_CHANNEL_ID)
+            .setContentTitle("قربت تخلص الجيجات")
+            .setContentText(String.format("استهلكت %.2f GB من %.2f GB - على وشك الوصول للحد", usedGb, limitGb))
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+        nm.notify(WARNING_NOTIF_ID, notification)
 
     /**
      * TrafficStats totals are cumulative since the last device boot, and

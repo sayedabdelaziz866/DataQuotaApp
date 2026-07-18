@@ -254,6 +254,14 @@ class MainActivity : AppCompatActivity() {
             else -> "الحالة: المراقبة متوقفة"
         }
 
+        val lastCheck = quotaManager.getLastCheckTime()
+        binding.txtLastCheck.text = if (lastCheck == 0L) {
+            "آخر فحص: لسه مفيش (المراقبة متبدأتش)"
+        } else {
+            val secondsAgo = (System.currentTimeMillis() - lastCheck) / 1000
+            "آخر فحص كان من: $secondsAgo ثانية (المفروض يكون دايمًا أقل من 20)"
+        }
+
         binding.btnToggleMonitoring.text =
             if (quotaManager.isMonitoringEnabled()) "إيقاف المراقبة" else "بدء المراقبة"
 
