@@ -82,7 +82,7 @@ class DeviceAdminReceiver : android.app.admin.DeviceAdminReceiver() {
             val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
             if (!dpm.isDeviceOwnerApp(context.packageName)) return false
             return try {
-                dpm.clearDeviceOwnerApp()
+                dpm.clearDeviceOwnerApp(context.packageName)
                 true
             } catch (e: Exception) {
                 false
