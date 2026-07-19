@@ -25,6 +25,7 @@ class QuotaManager(context: Context) {
         private const val KEY_CYCLE_MONTH = "cycle_month"       // which month the counter belongs to
         private const val KEY_MONITORING_ENABLED = "monitoring_enabled"
         private const val KEY_BLOCKED = "is_blocked"
+        private const val KEY_VPN_ESTABLISHED = "vpn_actually_established"
         private const val KEY_WARNED_80 = "warned_80_percent"
         private const val KEY_LAST_CHECK = "last_check_time"
         private const val KEY_LAST_BOOT_RECEIVER = "last_boot_receiver_fired"
@@ -202,4 +203,13 @@ class QuotaManager(context: Context) {
     }
 
     fun isBlocked(): Boolean = prefs.getBoolean(KEY_BLOCKED, false)
+
+    /** Set by QuotaVpnService itself, based on whether establish() actually
+     *  succeeded - NOT just whether we intended to block. isBlocked() alone
+     *  can lie (e.g. if VPN consent silently isn't granted). */
+    fun setVpnActuallyEstablished(established: Boolean) {
+        prefs.edit().putBoolean(KEY_VPN_ESTABLISHED, established).apply()
+    }
+
+    fun isVpnActuallyEstablished(): Boolean = prefs.getBoolean(KEY_VPN_ESTABLISHED, false)
 }

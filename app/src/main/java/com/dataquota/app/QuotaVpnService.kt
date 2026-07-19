@@ -100,6 +100,8 @@ class QuotaVpnService : VpnService() {
         // registerNetworkWatcher) or an explicit ACTION_START.
         if (running) return
 
+        val quotaManager = QuotaManager(this)
+
         val builder = Builder()
             .setSession("Data Quota - Blocked")
             .addAddress("10.10.10.2", 32)
@@ -108,13 +110,22 @@ class QuotaVpnService : VpnService() {
             .addRoute("0.0.0.0", 0)
             .addDnsServer("10.10.10.1")
 
-        vpnInterface = builder.establish()
+        vpnInterface = try {
+            builder.establish()
+        } catch (e: Exception) {
+            quotaManager.setVpnActuallyEstablished(false)
+            null
+        }
+
         if (vpnInterface == null) {
-            // No active network right now (e.g. Wi-Fi mid-reconnect) -
-            // the network callback above will retry once it's back.
+            // No active network right now (e.g. Wi-Fi mid-reconnect), OR
+            // VPN consent isn't currently granted - either way, record the
+            // real failure so the UI doesn't lie about being blocked.
+            quotaManager.setVpnActuallyEstablished(false)
             return
         }
         running = true
+        quotaManager.setVpnActuallyEstablished(true)
 
         startForeground(NOTIF_ID, buildNotification())
 
@@ -148,6 +159,7 @@ class QuotaVpnService : VpnService() {
 
     private fun stopBlocking() {
         teardownInterface()
+        QuotaManager(this).setVpnActuallyEstablished(false)
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 

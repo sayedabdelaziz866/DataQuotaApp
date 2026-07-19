@@ -290,13 +290,21 @@ class MainActivity : AppCompatActivity() {
 
         val lastBoot = quotaManager.getLastBootReceiverFired()
         val bootError = quotaManager.getLastBootReceiverError()
+        val minsAgo = if (lastBoot > 0) (System.currentTimeMillis() - lastBoot) / 60000 else 0
         binding.txtBootReceiverStatus.text = when {
             lastBoot == 0L -> "تشخيص الريستارت: BootReceiver لسه متنداش خالص من وقت التثبيت"
             bootError != null -> "تشخيص الريستارت: BootReceiver اشتغل بس فشل - $bootError"
-            else -> {
-                val minsAgo = (System.currentTimeMillis() - lastBoot) / 60000
-                "تشخيص الريستارت: آخر مرة BootReceiver اشتغل من $minsAgo دقيقة"
-            }
+            else -> "تشخيص الريستارت: آخر مرة BootReceiver اشتغل من $minsAgo دقيقة"
+        }
+
+        val vpnConsentGranted = android.net.VpnService.prepare(this) == null
+        binding.txtVpnStatus.text = when {
+            !vpnConsentGranted -> "تشخيص القطع: إذن الـ VPN مش متفعّل - القطع مش هيشتغل خالص! دوس بدء المراقبة عشان توافق"
+            quotaManager.isBlocked() && !quotaManager.isVpnActuallyEstablished() ->
+                "تشخيص القطع: التطبيق بيحاول يقطع بس النفق مش شغال فعليًا - النت شغال رغم الحد"
+            quotaManager.isBlocked() && quotaManager.isVpnActuallyEstablished() ->
+                "تشخيص القطع: النفق شغال فعليًا، النت مقطوع بالفعل"
+            else -> "تشخيص القطع: مش محتاج يقطع دلوقتي"
         }
 
         binding.btnToggleMonitoring.text =
