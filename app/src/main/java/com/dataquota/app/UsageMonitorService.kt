@@ -30,6 +30,7 @@ class UsageMonitorService : Service() {
 
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var quotaManager: QuotaManager
+    private var consecutiveNotHomeChecks = 0
 
     private val checkRunnable = object : Runnable {
         override fun run() {
@@ -44,6 +45,10 @@ class UsageMonitorService : Service() {
         private const val NOTIF_ID = 7
         private const val WARNING_CHANNEL_ID = "quota_warning_channel"
         private const val WARNING_NOTIF_ID = 8
+        // Require this many consecutive "not on home network" readings
+        // (each CHECK_INTERVAL_MS apart) before actually unblocking -
+        // survives brief Wi-Fi connectivity blips instead of flapping.
+        private const val NOT_HOME_DEBOUNCE_COUNT = 4
     }
 
     override fun onCreate() {
@@ -63,10 +68,18 @@ class UsageMonitorService : Service() {
         val onHome = WifiHelper.isOnHomeNetwork(this, quotaManager)
 
         if (onHome) {
+            consecutiveNotHomeChecks = 0
             accumulateWifiUsage()
         } else {
-            // Not on the home network: don't count usage, and make sure
-            // we're not blocking - the block only applies to the home network.
+            // Not on the home network - but don't trust a single blip
+            // (common with phone-to-phone test hotspots, which briefly
+            // drop and reconnect). Only treat it as "really left" after a
+            // few consecutive checks agree, otherwise a momentary Wi-Fi
+            // hiccup would flip the block on and off repeatedly.
+            consecutiveNotHomeChecks++
+            if (consecutiveNotHomeChecks < NOT_HOME_DEBOUNCE_COUNT) {
+                return
+            }
             resetSnapshotBaseline()
             if (quotaManager.isBlocked()) {
                 stopBlockingVpn()
