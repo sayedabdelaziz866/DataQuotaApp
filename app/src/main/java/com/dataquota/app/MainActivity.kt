@@ -56,6 +56,13 @@ class MainActivity : AppCompatActivity() {
 
         requestNeededPermissions()
 
+        // Safety net: if monitoring was left "on" from a previous session
+        // (e.g. before this app update), make sure the service is actually
+        // alive right now - not just trusting the stored flag.
+        if (quotaManager.isMonitoringEnabled()) {
+            startForegroundService(Intent(this, UsageMonitorService::class.java))
+        }
+
         binding.btnRegisterNetwork.setOnClickListener { registerCurrentNetwork() }
         binding.btnOpenLocationSettings.setOnClickListener { openAppLocationSettings() }
         binding.btnDisableBatteryOptimization.setOnClickListener { requestIgnoreBatteryOptimization() }
