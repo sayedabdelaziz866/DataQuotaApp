@@ -26,6 +26,7 @@ class QuotaManager(context: Context) {
         private const val KEY_MONITORING_ENABLED = "monitoring_enabled"
         private const val KEY_BLOCKED = "is_blocked"
         private const val KEY_VPN_ESTABLISHED = "vpn_actually_established"
+        private const val KEY_VPN_ERROR = "vpn_establish_error"
         private const val KEY_WARNED_80 = "warned_80_percent"
         private const val KEY_LAST_CHECK = "last_check_time"
         private const val KEY_LAST_BOOT_RECEIVER = "last_boot_receiver_fired"
@@ -212,4 +213,10 @@ class QuotaManager(context: Context) {
     }
 
     fun isVpnActuallyEstablished(): Boolean = prefs.getBoolean(KEY_VPN_ESTABLISHED, false)
+
+    fun setVpnEstablishError(message: String?) {
+        prefs.edit().putString(KEY_VPN_ERROR, message).apply()
+    }
+
+    fun getVpnEstablishError(): String? = prefs.getString(KEY_VPN_ERROR, null)
 }

@@ -300,8 +300,10 @@ class MainActivity : AppCompatActivity() {
         val vpnConsentGranted = android.net.VpnService.prepare(this) == null
         binding.txtVpnStatus.text = when {
             !vpnConsentGranted -> "تشخيص القطع: إذن الـ VPN مش متفعّل - القطع مش هيشتغل خالص! دوس بدء المراقبة عشان توافق"
-            quotaManager.isBlocked() && !quotaManager.isVpnActuallyEstablished() ->
-                "تشخيص القطع: التطبيق بيحاول يقطع بس النفق مش شغال فعليًا - النت شغال رغم الحد"
+            quotaManager.isBlocked() && !quotaManager.isVpnActuallyEstablished() -> {
+                val err = quotaManager.getVpnEstablishError()
+                "تشخيص القطع: التطبيق بيحاول يقطع بس النفق مش شغال - السبب: ${err ?: "غير معروف"}"
+            }
             quotaManager.isBlocked() && quotaManager.isVpnActuallyEstablished() ->
                 "تشخيص القطع: النفق شغال فعليًا، النت مقطوع بالفعل"
             else -> "تشخيص القطع: مش محتاج يقطع دلوقتي"

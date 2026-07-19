@@ -114,6 +114,7 @@ class QuotaVpnService : VpnService() {
             builder.establish()
         } catch (e: Exception) {
             quotaManager.setVpnActuallyEstablished(false)
+            quotaManager.setVpnEstablishError(e.toString())
             null
         }
 
@@ -122,10 +123,14 @@ class QuotaVpnService : VpnService() {
             // VPN consent isn't currently granted - either way, record the
             // real failure so the UI doesn't lie about being blocked.
             quotaManager.setVpnActuallyEstablished(false)
+            if (quotaManager.getVpnEstablishError() == null) {
+                quotaManager.setVpnEstablishError("establish() returned null (no exception thrown)")
+            }
             return
         }
         running = true
         quotaManager.setVpnActuallyEstablished(true)
+        quotaManager.setVpnEstablishError(null)
 
         startForeground(NOTIF_ID, buildNotification())
 
