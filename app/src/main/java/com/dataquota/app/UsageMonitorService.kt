@@ -75,10 +75,15 @@ class UsageMonitorService : Service() {
         }
 
         if (quotaManager.isOverLimit()) {
-            if (!quotaManager.isBlocked()) {
-                quotaManager.setBlocked(true)
-                startBlockingVpn()
-            }
+            // Always call this - it's cheap and safe because
+            // QuotaVpnService itself only rebuilds the tunnel if it isn't
+            // already running (see its own 'running' check). We must NOT
+            // gate this on quotaManager.isBlocked() being false: that flag
+            // is persisted and survives a reboot, but the actual VPN
+            // process does NOT - trusting the stale flag was leaving the
+            // device unblocked indefinitely after every reboot.
+            quotaManager.setBlocked(true)
+            startBlockingVpn()
         } else {
             if (quotaManager.isBlocked()) {
                 stopBlockingVpn()
