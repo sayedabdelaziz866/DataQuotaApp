@@ -74,6 +74,21 @@ class DeviceAdminReceiver : android.app.admin.DeviceAdminReceiver() {
             return dpm.isUninstallBlocked(adminComponent, context.packageName)
         }
 
+        /** Fully gives up Device Owner status - being Device Owner at all
+         *  (regardless of the separate uninstall-blocked flag) is what
+         *  actually prevents removing the app via Settings > Apps. This
+         *  is the real "let me uninstall this app" escape hatch. */
+        fun relinquishDeviceOwner(context: Context): Boolean {
+            val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            if (!dpm.isDeviceOwnerApp(context.packageName)) return false
+            return try {
+                dpm.clearDeviceOwnerApp()
+                true
+            } catch (e: Exception) {
+                false
+            }
+        }
+
         fun isDeviceOwner(context: Context): Boolean {
             val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
             return dpm.isDeviceOwnerApp(context.packageName)

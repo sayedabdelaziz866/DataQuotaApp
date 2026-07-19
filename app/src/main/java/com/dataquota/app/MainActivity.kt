@@ -107,6 +107,20 @@ class MainActivity : AppCompatActivity() {
             }
             refreshUi()
         }
+        binding.btnRelinquishDeviceOwner.setOnClickListener {
+            if (!DeviceAdminReceiver.isDeviceOwner(this)) {
+                Toast.makeText(this, "التطبيق أصلاً مش Device Owner", Toast.LENGTH_SHORT).show()
+            } else {
+                val success = DeviceAdminReceiver.relinquishDeviceOwner(this)
+                Toast.makeText(
+                    this,
+                    if (success) "تم التنازل - دلوقتي تقدر تحذف التطبيق عادي من الإعدادات"
+                    else "فشلت العملية",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            refreshUi()
+        }
 
         refreshUi()
     }
