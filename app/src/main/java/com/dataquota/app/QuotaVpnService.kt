@@ -102,6 +102,14 @@ class QuotaVpnService : VpnService() {
 
         val quotaManager = QuotaManager(this)
 
+        // Elevate to foreground FIRST, before attempting establish(). Doing
+        // this the other way around (which the code used to do) meant
+        // establish() was being called while still a plain background
+        // service - Android can silently refuse to hand out a VPN
+        // interface in that state, especially in the first moments after
+        // boot, which is exactly the failure we were seeing.
+        startForeground(NOTIF_ID, buildNotification())
+
         val builder = Builder()
             .setSession("Data Quota - Blocked")
             .addAddress("10.10.10.2", 32)
@@ -126,13 +134,12 @@ class QuotaVpnService : VpnService() {
             if (quotaManager.getVpnEstablishError() == null) {
                 quotaManager.setVpnEstablishError("establish() returned null (no exception thrown)")
             }
+            stopForeground(STOP_FOREGROUND_REMOVE)
             return
         }
         running = true
         quotaManager.setVpnActuallyEstablished(true)
         quotaManager.setVpnEstablishError(null)
-
-        startForeground(NOTIF_ID, buildNotification())
 
         // Drain the tun's read side so it doesn't fill up and block/crash;
         // we intentionally do nothing with the bytes we read (blackhole).
