@@ -78,5 +78,35 @@ class DeviceAdminReceiver : android.app.admin.DeviceAdminReceiver() {
             val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
             return dpm.isDeviceOwnerApp(context.packageName)
         }
+
+        /** Device-Owner-exclusive: grants this app persistent, system-level
+         *  VPN authorization that doesn't need the normal one-time
+         *  interactive consent dialog - and, unlike that consent, this is
+         *  designed by Android to reliably survive reboots. lockdownEnabled
+         *  is false so we still fully control when the tunnel actually
+         *  blocks traffic (see QuotaVpnService), rather than forcing the
+         *  VPN to always be connected. */
+        fun enableAlwaysOnVpnAuthorization(context: Context): Boolean {
+            val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val adminComponent = ComponentName(context, DeviceAdminReceiver::class.java)
+            if (!dpm.isDeviceOwnerApp(context.packageName)) return false
+            return try {
+                dpm.setAlwaysOnVpnPackage(adminComponent, context.packageName, false)
+                true
+            } catch (e: Exception) {
+                false
+            }
+        }
+
+        fun isAlwaysOnVpnAuthorized(context: Context): Boolean {
+            val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val adminComponent = ComponentName(context, DeviceAdminReceiver::class.java)
+            if (!dpm.isDeviceOwnerApp(context.packageName)) return false
+            return try {
+                dpm.getAlwaysOnVpnPackage(adminComponent) == context.packageName
+            } catch (e: Exception) {
+                false
+            }
+        }
     }
 }

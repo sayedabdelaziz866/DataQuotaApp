@@ -54,9 +54,22 @@ class QuotaVpnService : VpnService() {
                 stopSelf()
                 return START_NOT_STICKY
             }
-            else -> {
+            ACTION_START -> {
                 shouldBeBlocking = true
                 startBlocking()
+            }
+            else -> {
+                // Android's "Always-on VPN" mechanism can launch us
+                // automatically (e.g. right after boot, or on a network
+                // change) without our own ACTION_START. Only actually
+                // block if the quota is genuinely still exceeded - this
+                // matters because this same auto-launch also gives us the
+                // persistent, reboot-proof authorization we need.
+                val quotaManager = QuotaManager(this)
+                if (quotaManager.isOverLimit()) {
+                    shouldBeBlocking = true
+                    startBlocking()
+                }
             }
         }
         return START_STICKY

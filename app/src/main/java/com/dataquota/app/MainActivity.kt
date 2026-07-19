@@ -94,6 +94,19 @@ class MainActivity : AppCompatActivity() {
             }
             refreshUi()
         }
+        binding.btnEnableAlwaysOnVpn.setOnClickListener {
+            if (!DeviceAdminReceiver.isDeviceOwner(this)) {
+                Toast.makeText(this, "التطبيق لسه مش Device Owner", Toast.LENGTH_LONG).show()
+            } else {
+                val success = DeviceAdminReceiver.enableAlwaysOnVpnAuthorization(this)
+                Toast.makeText(
+                    this,
+                    if (success) "تم تفعيل الإذن الدائم" else "فشل التفعيل - شوف الرسالة اللي هتظهر",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            refreshUi()
+        }
 
         refreshUi()
     }
@@ -323,6 +336,11 @@ class MainActivity : AppCompatActivity() {
             "أوقف الحماية من الحذف"
         } else {
             "فعّل الحماية من الحذف"
+        }
+        binding.btnEnableAlwaysOnVpn.text = if (DeviceAdminReceiver.isAlwaysOnVpnAuthorized(this)) {
+            "إذن VPN الدائم: مفعّل ✓"
+        } else {
+            "فعّل إذن VPN الدائم (يحل مشكلة الريستارت)"
         }
 
         updateDailyChart()
