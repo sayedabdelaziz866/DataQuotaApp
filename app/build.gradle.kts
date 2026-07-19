@@ -7,6 +7,21 @@ android {
     namespace = "com.dataquota.app"
     compileSdk = 34
 
+    signingConfigs {
+        getByName("debug") {
+            // Use a fixed keystore committed to the repo instead of the
+            // default per-machine debug.keystore - GitHub Actions runs in
+            // a fresh container each time, so without this every build
+            // would get signed with a different random key, and Android
+            // would refuse to install the update over the previous one
+            // ("App not installed").
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.dataquota.app"
         minSdk = 26          // Android 8.0 - needed for reliable BSSID reading
