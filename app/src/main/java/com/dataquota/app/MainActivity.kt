@@ -288,6 +288,17 @@ class MainActivity : AppCompatActivity() {
             "آخر فحص كان من: $secondsAgo ثانية (المفروض يكون دايمًا أقل من 20)"
         }
 
+        val lastBoot = quotaManager.getLastBootReceiverFired()
+        val bootError = quotaManager.getLastBootReceiverError()
+        binding.txtBootReceiverStatus.text = when {
+            lastBoot == 0L -> "تشخيص الريستارت: BootReceiver لسه متنداش خالص من وقت التثبيت"
+            bootError != null -> "تشخيص الريستارت: BootReceiver اشتغل بس فشل - $bootError"
+            else -> {
+                val minsAgo = (System.currentTimeMillis() - lastBoot) / 60000
+                "تشخيص الريستارت: آخر مرة BootReceiver اشتغل من $minsAgo دقيقة"
+            }
+        }
+
         binding.btnToggleMonitoring.text =
             if (quotaManager.isMonitoringEnabled()) "إيقاف المراقبة" else "بدء المراقبة"
 

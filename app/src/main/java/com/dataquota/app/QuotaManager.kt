@@ -27,6 +27,8 @@ class QuotaManager(context: Context) {
         private const val KEY_BLOCKED = "is_blocked"
         private const val KEY_WARNED_80 = "warned_80_percent"
         private const val KEY_LAST_CHECK = "last_check_time"
+        private const val KEY_LAST_BOOT_RECEIVER = "last_boot_receiver_fired"
+        private const val KEY_LAST_BOOT_ERROR = "last_boot_receiver_error"
     }
 
     // ---------- Home network ----------
@@ -152,6 +154,22 @@ class QuotaManager(context: Context) {
     }
 
     fun getLastCheckTime(): Long = prefs.getLong(KEY_LAST_CHECK, 0L)
+
+    /** Set the instant BootReceiver.onReceive() is entered - separate from
+     *  the regular check timestamp, so we can tell "the OS never delivered
+     *  the boot broadcast to us" apart from "it fired but something after
+     *  that failed". */
+    fun setLastBootReceiverFired(millis: Long) {
+        prefs.edit().putLong(KEY_LAST_BOOT_RECEIVER, millis).apply()
+    }
+
+    fun getLastBootReceiverFired(): Long = prefs.getLong(KEY_LAST_BOOT_RECEIVER, 0L)
+
+    fun setLastBootReceiverError(message: String) {
+        prefs.edit().putString(KEY_LAST_BOOT_ERROR, message).apply()
+    }
+
+    fun getLastBootReceiverError(): String? = prefs.getString(KEY_LAST_BOOT_ERROR, null)
 
     private fun currentMonthKey(): Int {
         val cal = Calendar.getInstance()

@@ -39,7 +39,7 @@ class UsageMonitorService : Service() {
     }
 
     companion object {
-        private const val CHECK_INTERVAL_MS = 5_000L // check every 5 seconds
+        private const val CHECK_INTERVAL_MS = 3_000L // check every 3 seconds
         private const val NOTIF_CHANNEL_ID = "usage_monitor_channel"
         private const val NOTIF_ID = 7
         private const val WARNING_CHANNEL_ID = "quota_warning_channel"
