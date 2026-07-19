@@ -78,6 +78,19 @@ class MainActivity : AppCompatActivity() {
         binding.btnOpenUsageAccessSettings.setOnClickListener {
             TopAppsHelper.openUsageAccessSettings(this)
         }
+        binding.btnApplyUninstallProtection.setOnClickListener {
+            if (DeviceAdminReceiver.isDeviceOwner(this)) {
+                DeviceAdminReceiver.applyProtections(this)
+                Toast.makeText(this, "تم تفعيل الحماية من الحذف", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(
+                    this,
+                    "التطبيق لسه مش Device Owner - محتاج إعداد عن طريق QR وقت الفورمات",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            refreshUi()
+        }
 
         refreshUi()
     }
@@ -274,6 +287,12 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnToggleMonitoring.text =
             if (quotaManager.isMonitoringEnabled()) "إيقاف المراقبة" else "بدء المراقبة"
+
+        binding.txtDeviceOwnerStatus.text = if (DeviceAdminReceiver.isDeviceOwner(this)) {
+            "حماية الحذف: مفعّلة (التطبيق Device Owner)"
+        } else {
+            "حماية الحذف: غير مفعّلة (لسه عادي، ممكن يتحذف)"
+        }
 
         updateDailyChart()
         updateTopApps()

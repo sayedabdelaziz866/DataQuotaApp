@@ -115,6 +115,20 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="تصفير الاستهلاك"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:id="@+id/txtDeviceOwnerStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnApplyUninstallProtection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="فعّل الحماية من الحذف"
             android:layout_marginBottom="32dp" />
 
         <TextView

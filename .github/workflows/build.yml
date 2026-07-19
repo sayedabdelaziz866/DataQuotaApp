@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -23,6 +25,28 @@ jobs:
 
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
+
+      - name: Compute provisioning checksum
+        id: checksum
+        run: |
+          CHECKSUM=$(sha256sum app/build/outputs/apk/debug/app-debug.apk | awk '{print $1}' | xxd -r -p | base64 | tr '+/' '-_' | tr -d '=')
+          echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
+          echo "=================================================="
+          echo "PROVISIONING CHECKSUM (copy this): $CHECKSUM"
+          echo "=================================================="
+
+      - name: Publish release with APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest build
+          body: |
+            Provisioning checksum (PROVISIONING_DEVICE_ADMIN_PACKAGE_CHECKSUM):
+            ${{ steps.checksum.outputs.checksum }}
+          files: app/build/outputs/apk/debug/app-debug.apk
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
