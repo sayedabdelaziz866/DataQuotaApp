@@ -4,6 +4,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
@@ -25,6 +29,10 @@ class QuotaVpnService : VpnService() {
     private var vpnInterface: ParcelFileDescriptor? = null
     private var blackholeThread: Thread? = null
     @Volatile private var running = false
+    @Volatile private var shouldBeBlocking = false
+
+    private var connectivityManager: ConnectivityManager? = null
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
     companion object {
         const val ACTION_START = "com.dataquota.app.action.START_BLOCK"
@@ -33,24 +41,63 @@ class QuotaVpnService : VpnService() {
         private const val NOTIF_ID = 42
     }
 
+    override fun onCreate() {
+        super.onCreate()
+        registerNetworkWatcher()
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
+                shouldBeBlocking = false
                 stopBlocking()
                 stopSelf()
                 return START_NOT_STICKY
             }
-            else -> startBlocking()
+            else -> {
+                shouldBeBlocking = true
+                startBlocking()
+            }
         }
         return START_STICKY
     }
 
+    /**
+     * Watches for the underlying network changing (e.g. Wi-Fi turned off
+     * then back on). When that happens our TUN tunnel is silently killed by
+     * the OS; this is how we notice and rebuild it - instead of blindly
+     * tearing down and rebuilding on every single periodic check, which
+     * caused a visible flicker (internet briefly working, every few
+     * seconds, during each rebuild).
+     */
+    private fun registerNetworkWatcher() {
+        connectivityManager = getSystemService(ConnectivityManager::class.java)
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+
+        networkCallback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                if (shouldBeBlocking) {
+                    startBlocking()
+                }
+            }
+        }
+        try {
+            connectivityManager?.registerNetworkCallback(request, networkCallback!!)
+        } catch (e: Exception) {
+            // Some OEMs restrict this - the periodic re-check from
+            // UsageMonitorService (every 5s while over limit) is still a
+            // fallback, just less instant.
+        }
+    }
+
     private fun startBlocking() {
-        // Always tear down and re-establish, even if we think we're already
-        // running - a Wi-Fi toggle silently kills the old tunnel while
-        // leaving our 'running' flag stale, so trusting it would leave the
-        // device unblocked until the next full restart.
-        teardownInterface()
+        // Only rebuild if we're not already running - avoids tearing the
+        // tunnel down and recreating it unnecessarily. We only actually
+        // reach here again after a real network change (see
+        // registerNetworkWatcher) or an explicit ACTION_START.
+        if (running) return
 
         val builder = Builder()
             .setSession("Data Quota - Blocked")
@@ -63,7 +110,7 @@ class QuotaVpnService : VpnService() {
         vpnInterface = builder.establish()
         if (vpnInterface == null) {
             // No active network right now (e.g. Wi-Fi mid-reconnect) -
-            // the next periodic check from UsageMonitorService will retry.
+            // the network callback above will retry once it's back.
             return
         }
         running = true
@@ -130,6 +177,11 @@ class QuotaVpnService : VpnService() {
     }
 
     override fun onDestroy() {
+        try {
+            networkCallback?.let { connectivityManager?.unregisterNetworkCallback(it) }
+        } catch (e: Exception) {
+            // ignore
+        }
         stopBlocking()
         super.onDestroy()
     }

@@ -79,15 +79,18 @@ class MainActivity : AppCompatActivity() {
             TopAppsHelper.openUsageAccessSettings(this)
         }
         binding.btnApplyUninstallProtection.setOnClickListener {
-            if (DeviceAdminReceiver.isDeviceOwner(this)) {
-                DeviceAdminReceiver.applyProtections(this)
-                Toast.makeText(this, "تم تفعيل الحماية من الحذف", Toast.LENGTH_SHORT).show()
-            } else {
+            if (!DeviceAdminReceiver.isDeviceOwner(this)) {
                 Toast.makeText(
                     this,
                     "التطبيق لسه مش Device Owner - محتاج إعداد عن طريق QR وقت الفورمات",
                     Toast.LENGTH_LONG
                 ).show()
+            } else if (DeviceAdminReceiver.isUninstallBlocked(this)) {
+                DeviceAdminReceiver.removeUninstallProtection(this)
+                Toast.makeText(this, "التطبيق بقى عادي، يقدر يتحذف", Toast.LENGTH_SHORT).show()
+            } else {
+                DeviceAdminReceiver.applyProtections(this)
+                Toast.makeText(this, "تم تفعيل الحماية من الحذف", Toast.LENGTH_SHORT).show()
             }
             refreshUi()
         }
@@ -288,10 +291,17 @@ class MainActivity : AppCompatActivity() {
         binding.btnToggleMonitoring.text =
             if (quotaManager.isMonitoringEnabled()) "إيقاف المراقبة" else "بدء المراقبة"
 
-        binding.txtDeviceOwnerStatus.text = if (DeviceAdminReceiver.isDeviceOwner(this)) {
-            "حماية الحذف: مفعّلة (التطبيق Device Owner)"
+        binding.txtDeviceOwnerStatus.text = when {
+            !DeviceAdminReceiver.isDeviceOwner(this) -> "حماية الحذف: غير مفعّلة (لسه عادي، ممكن يتحذف)"
+            DeviceAdminReceiver.isUninstallBlocked(this) -> "حماية الحذف: مفعّلة (التطبيق محمي من الحذف)"
+            else -> "حماية الحذف: متوقفة (التطبيق Device Owner بس بيتحذف عادي)"
+        }
+        binding.btnApplyUninstallProtection.text = if (DeviceAdminReceiver.isDeviceOwner(this) &&
+            DeviceAdminReceiver.isUninstallBlocked(this)
+        ) {
+            "أوقف الحماية من الحذف"
         } else {
-            "حماية الحذف: غير مفعّلة (لسه عادي، ممكن يتحذف)"
+            "فعّل الحماية من الحذف"
         }
 
         updateDailyChart()

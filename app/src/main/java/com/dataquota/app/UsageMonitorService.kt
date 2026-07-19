@@ -75,11 +75,10 @@ class UsageMonitorService : Service() {
         }
 
         if (quotaManager.isOverLimit()) {
-            // Always re-assert the block, even if we already think we're
-            // blocked - toggling Wi-Fi off/on tears down the VPN tunnel,
-            // and this is how we notice and re-establish it.
-            quotaManager.setBlocked(true)
-            startBlockingVpn()
+            if (!quotaManager.isBlocked()) {
+                quotaManager.setBlocked(true)
+                startBlockingVpn()
+            }
         } else {
             if (quotaManager.isBlocked()) {
                 stopBlockingVpn()

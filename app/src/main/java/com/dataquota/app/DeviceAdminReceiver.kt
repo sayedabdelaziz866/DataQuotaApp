@@ -28,11 +28,12 @@ class DeviceAdminReceiver : android.app.admin.DeviceAdminReceiver() {
         val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val adminComponent = ComponentName(context, DeviceAdminReceiver::class.java)
 
-        // We are now Device Owner. Activate the managed profile/device and
-        // immediately block uninstalling this app - this is the actual
-        // "can't be removed by the kid" protection.
+        // We are now Device Owner - this alone already gives the app more
+        // reliable background execution after reboot (bypasses a lot of
+        // OEM battery-management interference). We do NOT auto-block
+        // uninstall here on purpose: the app stays normally removable
+        // unless the person explicitly enables that from the app's screen.
         dpm.setProfileEnabled(adminComponent)
-        applyProtections(context)
 
         // Bring the app to the foreground so the person can finish setup
         // (register the home network, set the limit, start monitoring).
@@ -53,6 +54,24 @@ class DeviceAdminReceiver : android.app.admin.DeviceAdminReceiver() {
             if (!dpm.isDeviceOwnerApp(context.packageName)) return
 
             dpm.setUninstallBlocked(adminComponent, context.packageName, true)
+        }
+
+        /** Removes the uninstall-block, so the app goes back to being a
+         *  normal, freely-removable app (while staying Device Owner, which
+         *  still helps it survive reboots more reliably). */
+        fun removeUninstallProtection(context: Context) {
+            val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val adminComponent = ComponentName(context, DeviceAdminReceiver::class.java)
+            if (!dpm.isDeviceOwnerApp(context.packageName)) return
+
+            dpm.setUninstallBlocked(adminComponent, context.packageName, false)
+        }
+
+        fun isUninstallBlocked(context: Context): Boolean {
+            val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val adminComponent = ComponentName(context, DeviceAdminReceiver::class.java)
+            if (!dpm.isDeviceOwnerApp(context.packageName)) return false
+            return dpm.isUninstallBlocked(adminComponent, context.packageName)
         }
 
         fun isDeviceOwner(context: Context): Boolean {
