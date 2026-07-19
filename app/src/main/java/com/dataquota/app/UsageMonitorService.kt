@@ -117,6 +117,7 @@ class UsageMonitorService : Service() {
             .setAutoCancel(true)
             .build()
         nm.notify(WARNING_NOTIF_ID, notification)
+    }
 
     /**
      * TrafficStats totals are cumulative since the last device boot, and
