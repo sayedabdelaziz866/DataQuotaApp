@@ -39,7 +39,7 @@ class UsageMonitorService : Service() {
     }
 
     companion object {
-        private const val CHECK_INTERVAL_MS = 15_000L // check every 15 seconds
+        private const val CHECK_INTERVAL_MS = 5_000L // check every 5 seconds
         private const val NOTIF_CHANNEL_ID = "usage_monitor_channel"
         private const val NOTIF_ID = 7
         private const val WARNING_CHANNEL_ID = "quota_warning_channel"
@@ -75,9 +75,11 @@ class UsageMonitorService : Service() {
         }
 
         if (quotaManager.isOverLimit()) {
-            if (!quotaManager.isBlocked()) {
-                startBlockingVpn()
-            }
+            // Always re-assert the block, even if we already think we're
+            // blocked - toggling Wi-Fi off/on tears down the VPN tunnel,
+            // and this is how we notice and re-establish it.
+            quotaManager.setBlocked(true)
+            startBlockingVpn()
         } else {
             if (quotaManager.isBlocked()) {
                 stopBlockingVpn()

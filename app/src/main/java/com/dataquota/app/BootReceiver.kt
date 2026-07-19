@@ -17,6 +17,7 @@ class BootReceiver : BroadcastReceiver() {
         if (quotaManager.isMonitoringEnabled()) {
             val serviceIntent = Intent(context, UsageMonitorService::class.java)
             context.startForegroundService(serviceIntent)
+            QuotaCheckWorker.schedule(context)
         }
     }
 }

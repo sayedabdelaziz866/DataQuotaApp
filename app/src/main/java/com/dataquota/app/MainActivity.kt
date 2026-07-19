@@ -61,6 +61,7 @@ class MainActivity : AppCompatActivity() {
         // alive right now - not just trusting the stored flag.
         if (quotaManager.isMonitoringEnabled()) {
             startForegroundService(Intent(this, UsageMonitorService::class.java))
+            QuotaCheckWorker.schedule(this)
         }
 
         binding.btnRegisterNetwork.setOnClickListener { registerCurrentNetwork() }
@@ -219,6 +220,7 @@ class MainActivity : AppCompatActivity() {
     private fun startMonitoring() {
         quotaManager.setMonitoringEnabled(true)
         startForegroundService(Intent(this, UsageMonitorService::class.java))
+        QuotaCheckWorker.schedule(this)
         refreshUi()
     }
 
@@ -229,6 +231,7 @@ class MainActivity : AppCompatActivity() {
             action = QuotaVpnService.ACTION_STOP
         })
         quotaManager.setBlocked(false)
+        QuotaCheckWorker.cancel(this)
         refreshUi()
     }
 

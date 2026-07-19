@@ -46,7 +46,11 @@ class QuotaVpnService : VpnService() {
     }
 
     private fun startBlocking() {
-        if (running) return
+        // Always tear down and re-establish, even if we think we're already
+        // running - a Wi-Fi toggle silently kills the old tunnel while
+        // leaving our 'running' flag stale, so trusting it would leave the
+        // device unblocked until the next full restart.
+        teardownInterface()
 
         val builder = Builder()
             .setSession("Data Quota - Blocked")
@@ -56,7 +60,12 @@ class QuotaVpnService : VpnService() {
             .addRoute("0.0.0.0", 0)
             .addDnsServer("10.10.10.1")
 
-        vpnInterface = builder.establish() ?: return
+        vpnInterface = builder.establish()
+        if (vpnInterface == null) {
+            // No active network right now (e.g. Wi-Fi mid-reconnect) -
+            // the next periodic check from UsageMonitorService will retry.
+            return
+        }
         running = true
 
         startForeground(NOTIF_ID, buildNotification())
@@ -78,7 +87,7 @@ class QuotaVpnService : VpnService() {
         blackholeThread?.start()
     }
 
-    private fun stopBlocking() {
+    private fun teardownInterface() {
         running = false
         try {
             vpnInterface?.close()
@@ -87,6 +96,10 @@ class QuotaVpnService : VpnService() {
         }
         vpnInterface = null
         blackholeThread = null
+    }
+
+    private fun stopBlocking() {
+        teardownInterface()
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
